@@ -84,7 +84,6 @@ def svm_ova_fromfilenames(input_filenames,
 
         kernel_mat = io.loadmat(fname)
 
-
         # -- check that kernels come from the same "source"
         if train_fnames is None:
             train_fnames = kernel_mat["train_fnames"]
@@ -97,11 +96,18 @@ def svm_ova_fromfilenames(input_filenames,
         ktrn = kernel_mat['kernel_traintrain']
         ktst = kernel_mat['kernel_traintest']
 
+        if 0:
+            import cPickle, os
+            print 'DUMPING', fname
+            ofilename = '/home/jbergstra/tmp/%s.pkl' % os.path.basename(fname)
+            cPickle.dump(kernel_mat, open(ofilename, 'w'), -1)
+
         assert(not (ktrn==0).all() )
         assert(not (ktst==0).all() )
 
         if not no_trace_normalization:
             ktrn_trace = ktrn.trace()
+            print 'normalizing by trace:', ktrn_trace
             ktrn /= ktrn_trace
             ktst /= ktrn_trace
 
@@ -155,6 +161,7 @@ def svm_ova_fromfilenames(input_filenames,
         ltrain[train_labels == cat] = +1
         ltrain = ltrain.astype(double)
         current_labels = Features.Labels(ltrain)
+        print 'Training SVM with C=%e' % regularization
         svm = Classifier.LibSVM(regularization, 
                                 customkernel, 
                                 current_labels)

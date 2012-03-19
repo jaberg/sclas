@@ -19,6 +19,7 @@ import shutil
 import optparse
 import csv
 import cPickle as pkl
+import numpy as np
 
 import warnings
 warnings.simplefilter('ignore', FutureWarning)
@@ -731,7 +732,10 @@ def kernel_generate_fromcsv(input_csv_fname,
                             # --
                             overwrite = DEFAULT_OVERWRITE,
                             noverify = DEFAULT_NOVERIFY,
+                            save_partial = False
                             ):
+
+    rval = {}
 
     assert(kernel_type in VALID_KERNEL_TYPES)
 
@@ -764,6 +768,7 @@ def kernel_generate_fromcsv(input_csv_fname,
     get_fvector_obj.initialize(ori_train_fnames, ori_test_fnames, noverify=noverify)
     get_fvector_func = get_fvector_obj.get_fvector
 
+    print 'SIMFUNC', simfunc
     # --------------------------------------------------------------------------
     # -- init
     # load first vector to get dimensionality
@@ -818,6 +823,9 @@ def kernel_generate_fromcsv(input_csv_fname,
     except OverwriteError, err:
         print err
         return 
+
+    if save_partial:
+        rval['train_features_raw'] = train_features.copy()
         
     # -- train x train
     print "Preprocessing train features ..."
@@ -916,6 +924,10 @@ def kernel_generate_fromcsv(input_csv_fname,
                                          kernel_type = kernel_type,
                                          whiten_vectors = whiten_vectors)
 
+    if save_partial:
+        rval['train_features_preproc'] = train_features.copy()
+        rval['whiten_vectors'] = whiten_vectors
+
     assert(not sp.isnan(sp.ravel(train_features)).any())
     assert(not sp.isinf(sp.ravel(train_features)).any())
 
@@ -993,9 +1005,17 @@ def kernel_generate_fromcsv(input_csv_fname,
             "train_fnames": ori_train_fnames,
             "test_fnames": ori_test_fnames,
             }
+    data.update(rval)
+
+    if save_partial:
+        assert np.all(train_features  == rval['train_features_preproc'])
 
     try:
-        io.savemat(output_fname, data, format="4")
+        if output_fname.endswith('.mat'):
+            io.savemat(output_fname, data, format="4")
+        else:
+            pkl.dump(data, open(output_fname, 'w'), -1)
+
     except IOError, err:
         print "ERROR!:", err
         
@@ -1053,6 +1073,11 @@ def get_optparser():
                       action="store_true",
                       help="disable verification of files before loading [default=%default]")
 
+    parser.add_option("--save-partial",
+                      default=False,
+                      action="store_true",
+                      help="Save partial computations to help James debug")
+
 #     parser.add_option("--verbose", "-v" ,
 #                       default=DEFAULT_VERBOSE,
 #                       action="store_true",
@@ -1099,7 +1124,8 @@ def main():
                                 #input_path = opts.input_path,
                                 # --
                                 overwrite = opts.overwrite,
-                                noverify = opts.noverify
+                                noverify = opts.noverify,
+                                save_partial = opts.save_partial,
                                 )
 
 # ------------------------------------------------------------------------------
