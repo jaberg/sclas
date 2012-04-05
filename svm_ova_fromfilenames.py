@@ -235,7 +235,6 @@ def svm_ova_fromfilenames(input_filenames,
     print test_predictions.shape
     print "Classification accuracy on test data (%):", accuracy
     
-
     svm_labels = gt
 
     # -- average precision

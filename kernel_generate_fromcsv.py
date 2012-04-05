@@ -732,8 +732,14 @@ def kernel_generate_fromcsv(input_csv_fname,
                             # --
                             overwrite = DEFAULT_OVERWRITE,
                             noverify = DEFAULT_NOVERIFY,
-                            save_partial = False
+                            save_partial = False,
+                            match="",
                             ):
+    if match:
+        print 'loading match data', match
+        matchdata = io.loadmat(match)
+        assert 'kernel_traintrain' in matchdata
+        assert 'kernel_traintest' in matchdata
 
     rval = {}
 
@@ -1007,6 +1013,22 @@ def kernel_generate_fromcsv(input_csv_fname,
             }
     data.update(rval)
 
+    if match:
+        def closeish(msg, A, B, atol=.25):
+            AmB = abs(A - B)
+            print msg, AmB.max(), (AmB / (abs(A) + abs(B))).max(), AmB.mean(),
+            print (AmB / (abs(A) + abs(B))).mean()
+            print A[:3, :3]
+            print B[:3, :3]
+            # -- these numbers are typically pretty big, but a few are close to zero,
+            #    so relative error is as much as .5 but I think it's OK.
+            if atol:
+                assert AmB.max() < atol
+        closeish('match traintrain',
+                matchdata['kernel_traintrain'], data['kernel_traintrain'], None)
+        closeish('match traintest',
+                matchdata['kernel_traintest'], data['kernel_traintest'], None)
+
     if save_partial:
         assert np.all(train_features  == rval['train_features_preproc'])
 
@@ -1078,6 +1100,12 @@ def get_optparser():
                       action="store_true",
                       help="Save partial computations to help James debug")
 
+    parser.add_option("--match",
+                      default="",
+                      type="str",
+                      metavar='FILE',
+                      help="assert that the computed value matches previously computed file")
+
 #     parser.add_option("--verbose", "-v" ,
 #                       default=DEFAULT_VERBOSE,
 #                       action="store_true",
@@ -1126,6 +1154,7 @@ def main():
                                 overwrite = opts.overwrite,
                                 noverify = opts.noverify,
                                 save_partial = opts.save_partial,
+                                match = opts.match,
                                 )
 
 # ------------------------------------------------------------------------------
